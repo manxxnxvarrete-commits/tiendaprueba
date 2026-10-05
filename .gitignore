@@ -1,0 +1,26 @@
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env.local
+
+# Dependencias y compilados
+**/node_modules/
+frontend/dist/
+
+# Datos generados por la aplicación
+backend/uploads/
+
+# Llaves, certificados y credenciales
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+
+# Archivos temporales y del editor
+*.log
+.DS_Store
+.vscode/
+.idea/
