@@ -10,11 +10,23 @@ require('dotenv').config();
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const AUTH_SECRET = process.env.AUTH_SECRET || process.env.DB_PASSWORD || 'cambia-esta-clave';
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'uploads');
+const ORIGENES_PERMITIDOS = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((origen) => origen.trim())
+  .filter(Boolean);
 
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-app.use(cors());
+app.use(cors({
+  origin(origen, callback) {
+    if (!origen || !ORIGENES_PERMITIDOS.length || ORIGENES_PERMITIDOS.includes(origen)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Origen no permitido por CORS.'));
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+}));
 app.use(express.json({ limit: '6mb' }));
 app.use('/uploads', express.static(UPLOADS_DIR));
 
@@ -91,6 +103,41 @@ async function crearAdministradorInicial() {
   const passwordHash = await bcrypt.hash(password, 12);
   await pool.query("INSERT INTO usuarios (usuario, password, tipo) VALUES ($1, $2, 'administrador')", [usuario, passwordHash]);
   console.log(`Administrador inicial creado: ${usuario}`);
+}
+
+async function inicializarBaseDatos() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS usuarios (
+      id_usuario SERIAL PRIMARY KEY,
+      usuario VARCHAR(50) NOT NULL UNIQUE,
+      password VARCHAR(255) NOT NULL,
+      tipo VARCHAR(20) NOT NULL DEFAULT 'cliente'
+    );
+
+    CREATE TABLE IF NOT EXISTS productos (
+      id_producto SERIAL PRIMARY KEY,
+      nombre VARCHAR(100) NOT NULL,
+      descripcion TEXT,
+      precio NUMERIC(10, 2) NOT NULL,
+      stock INTEGER NOT NULL DEFAULT 0,
+      imagen VARCHAR(255)
+    );
+
+    CREATE TABLE IF NOT EXISTS pedidos (
+      id_pedido SERIAL PRIMARY KEY,
+      id_usuario INTEGER NOT NULL REFERENCES usuarios(id_usuario),
+      fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      total NUMERIC(10, 2) NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS detalle_pedido (
+      id_detalle SERIAL PRIMARY KEY,
+      id_pedido INTEGER NOT NULL REFERENCES pedidos(id_pedido),
+      id_producto INTEGER NOT NULL REFERENCES productos(id_producto),
+      cantidad INTEGER NOT NULL,
+      precio NUMERIC(10, 2) NOT NULL
+    );
+  `);
 }
 
 app.get('/', (req, res) => res.send('API de Mi Tienda funcionando'));
@@ -252,6 +299,7 @@ app.get('/pedidos', requiereSesion, requiereAdmin, async (req, res) => {
 
 async function iniciar() {
   try {
+    await inicializarBaseDatos();
     await crearAdministradorInicial();
     app.listen(PORT, '0.0.0.0', () => console.log(`Servidor funcionando en http://0.0.0.0:${PORT}`));
   } catch (error) {
