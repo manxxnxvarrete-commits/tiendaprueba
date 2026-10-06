@@ -73,8 +73,15 @@ function App() {
   }, [sesion]);
 
   const cerrarSesion = () => {
+    // Borramos primero el almacenamiento para que un refresh no restaure la cuenta.
+    localStorage.removeItem('tienda_sesion');
+    localStorage.removeItem('tienda_carrito');
     setSesion(null);
     setCarrito([]);
+    setPedidos([]);
+    setCredenciales({ usuario: '', password: '' });
+    setVerPassword(false);
+    setModo('login');
     notificar('Sesión cerrada.', 'info');
   };
 
@@ -256,7 +263,7 @@ function App() {
 }
 
 function Header({ sesion, salir, cartCount }) {
-  return <header className="topbar"><div className="brand"><span className="brand-mark">M</span> MiTienda</div><div className="user-bar">{cartCount !== undefined && <span className="cart-pill">🛒 {cartCount}</span>}<span className="avatar">{sesion.usuario.slice(0, 1).toUpperCase()}</span><div><strong>{sesion.usuario}</strong><small>{sesion.tipo === 'administrador' ? 'Administrador' : 'Cliente'}</small></div><button className="logout" onClick={salir}>Salir</button></div></header>;
+  return <header className="topbar"><div className="brand"><span className="brand-mark">M</span> MiTienda</div><div className="user-bar">{cartCount !== undefined && <span className="cart-pill">🛒 {cartCount}</span>}<span className="avatar">{sesion.usuario.slice(0, 1).toUpperCase()}</span><div><strong>{sesion.usuario}</strong><small>{sesion.tipo === 'administrador' ? 'Administrador' : 'Cliente'}</small></div><button type="button" className="logout" onClick={salir} aria-label="Cerrar sesión">Cerrar sesión</button></div></header>;
 }
 
 function Stat({ icon, label, value }) { return <article className="stat"><span>{icon}</span><div><small>{label}</small><strong>{value}</strong></div></article>; }
